@@ -205,20 +205,20 @@ private:
 	//for example, if you need to do a 180 it's easier to reverse
 	//int p1=0,p2=0,p3=0,p4=0; // position of wheel angle motors to track their position
 	float currentAngle = 0, angleDerivative; // manual math
+	float temp, theta, xRate, yRate, rotateRate; // values of forward movement and rotary movement
+	float A,B,C,D; //math variables
+	float ws1,ws2,ws3,ws4; // wheel speeds
+	float wa1,wa2,wa3,wa4; // wheel angles
+	float camAng; // camera angle
+	float cwa1,cwa2,cwa3,cwa4; // current wheel angles
+	float cws1,cws2,cws3,cws4; // current wheel encoder sectors e.g. 0 - 1023 or 1024-2047 because of continous tracking
+	float max; // some more wheel balancing math
+	/*
+	1 - 4 are quadrants 1 - 4 respectively
+	*/
 
 	void TeleopPeriodic() override
 	{
-			float temp, theta, xRate, yRate, rotateRate; // values of forward movement and rotary movement
-			float A,B,C,D; //math variables
-			float ws1,ws2,ws3,ws4; // wheel speeds
-			float wa1,wa2,wa3,wa4; // wheel angles
-			float camAng; // camera angle
-			float cwa1,cwa2,cwa3,cwa4; // current wheel angles
-			float max; // some more wheel balancing math
-			/*
-			1 - 4 are quadrants 1 - 4 respectively
-			*/
-
 			xRate = rightJoystick->GetX(); // Get values of movement
 			yRate = rightJoystick->GetY() * -1;
 			rotateRate = leftJoystick->GetX();
@@ -285,19 +285,30 @@ private:
 			//math is done, now we set our motors
 
 			//ANALOG ENCODERS NEED TO HAVE THEIR POSITION TRACKED BECAUSE THEY ARE CONTINUOUS
-			// maybe % 360 will work
-			cwa1 = turnWheel1->Get() % 360;
-			cwa2 = turnWheel2->Get() % 360;
-			cwa3 = turnWheel3->Get() % 360;
-			cwa4 = turnWheel4->Get() % 360;
+			// doing % 1023 will give us their current position
+			// then we need to convert that to angle
+			cwa1 = turnWheel1->Get() % 1023;
+			cwa2 = turnWheel2->Get() % 1023;
+			cwa3 = turnWheel3->Get() % 1023;
+			cwa4 = turnWheel4->Get() % 1023;
 
+			// calculate current wheel sector
+			cws1 = turnWheel1->Get() - cwa1 / 1023;
+			cws2 = turnWheel2->Get() - cwa2 / 1023;
+			cws3 = turnWheel3->Get() - cwa3 / 1023;
+			cws4 = turnWheel4->Get() - cwa4 / 1023;
+
+			cwa1 = cwa1 / 1023 * 360;
+			cwa2 = cwa2 / 1023 * 360;
+			cwa3 = cwa3 / 1023 * 360;
+			cwa4 = cwa4 / 1023 * 360;
 			// need logic to make turning wheels more efficient
 			// here we turn the angle of the wheel around and reverse the move motors
 			// TODO: more logic is needed to help reverse wheel angle motors maybe
 
-			if(abs(wa1-cwa1) > 90 && abs(wa1-cwa1) < 270)
+			if(abs(wa1-cwa1) > 90 && abs(wa1-cwa1 < 270)
 			{
-				wa1 = wa1 + 180 % 360; // reverse the angle
+				wa1 = wa1 + 180 % 360;// reverse the angle
 				r1 = !r1;
 				moveWheel1->SetInverted(r1);
 			}
@@ -316,7 +327,7 @@ private:
 			if(abs(wa4-cwa4) > 90 && abs(wa4-cwa4) < 270)
 			{
 				wa4 = wa4 + 180 % 360; // reverse the angle
-				r4 = !r4;
+				r4 = !r4;cwa1 = cwa1 / 1023 * 360;
 				moveWheel1->SetInverted(r4);
 			}
 
@@ -328,10 +339,10 @@ private:
 			wa3 = wa3/360 * 1023;
 			wa4 = wa4/360 * 1023;
 
-			turnWheel1->Set(wa1); // setting our turn wheel motors
-			turnWheel2->Set(wa2);
-			turnWheel3->Set(wa3);
-			turnWheel4->Set(wa4);
+			turnWheel1->Set(wa1 * cws1); // setting our turn wheel motors
+			turnWheel2->Set(wa2 * cws2);
+			turnWheel3->Set(wa3 * cws3);
+			turnWheel4->Set(wa4 * cws4);
 
 			moveWheel1->Set(ws1 * multiplier); // setting our move motors
 			moveWheel2->Set(ws2 * multiplier);
